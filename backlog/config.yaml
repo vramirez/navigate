@@ -1,0 +1,9 @@
+project: Navigate
+taskPrefix: task
+statuses:
+  - To Do
+  - In Progress
+  - Done
+defaultStatus: To Do
+defaultAssignee: ""
+autoCommit: false
