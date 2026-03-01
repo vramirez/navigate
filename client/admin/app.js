@@ -12,6 +12,11 @@ async function apiFetch(path, opts = {}) {
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(API + path, { ...opts, headers });
   const data = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    clearToken();
+    route();
+    return { ok: false, status: 401, data };
+  }
   return { ok: res.ok, status: res.status, data };
 }
 
@@ -57,7 +62,7 @@ function viewLogin() {
   `;
 }
 
-function viewDashboard(users) {
+function viewDashboard({ users, page, pages }) {
   const pending = users.filter(u => u.status === 'pending');
   const rows = users.map(u => `
     <tr>
@@ -75,6 +80,14 @@ function viewDashboard(users) {
     </tr>
   `).join('');
 
+  const pagination = pages > 1 ? `
+    <div class="pagination">
+      ${page > 1 ? `<a href="#dashboard?page=${page - 1}" class="page-btn">Anterior</a>` : ''}
+      <span>Pagina ${page} de ${pages}</span>
+      ${page < pages ? `<a href="#dashboard?page=${page + 1}" class="page-btn">Siguiente</a>` : ''}
+    </div>
+  ` : '';
+
   return `
     <h2>Usuarios ${pending.length > 0 ? `<span class="badge pending">${pending.length} pendiente(s)</span>` : ''}</h2>
     <div class="card">
@@ -84,6 +97,7 @@ function viewDashboard(users) {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      ${pagination}
     </div>
   `;
 }
@@ -142,7 +156,7 @@ function viewBusinessTypes(types) {
   `;
 }
 
-function viewArticles(articles, cities, types) {
+function viewArticles({ articles, page, pages }, cities, types) {
   const cityOpts = cities.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
   const typeOpts = types.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 
@@ -156,6 +170,14 @@ function viewArticles(articles, cities, types) {
       <td><button class="small danger del-article-btn" data-id="${a.id}">Eliminar</button></td>
     </tr>
   `).join('');
+
+  const pagination = pages > 1 ? `
+    <div class="pagination">
+      ${page > 1 ? `<a href="#articles?page=${page - 1}" class="page-btn">Anterior</a>` : ''}
+      <span>Pagina ${page} de ${pages}</span>
+      ${page < pages ? `<a href="#articles?page=${page + 1}" class="page-btn">Siguiente</a>` : ''}
+    </div>
+  ` : '';
 
   return `
     <h2>Articulos</h2>
@@ -207,6 +229,7 @@ function viewArticles(articles, cities, types) {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      ${pagination}
     </div>
   `;
 }
@@ -214,7 +237,10 @@ function viewArticles(articles, cities, types) {
 // ── Route ────────────────────────────────────────────────────────────────────
 
 async function route() {
-  const hash = location.hash || '#dashboard';
+  const raw = location.hash || '#dashboard';
+  const [hash, queryPart] = raw.split('?');
+  const params = new URLSearchParams(queryPart || '');
+  const page = parseInt(params.get('page')) || 1;
   const app = document.getElementById('app');
 
   if (!getToken()) {
@@ -294,7 +320,7 @@ async function route() {
   } else if (hash === '#articles') {
     renderNav('#articles');
     const [{ data: articles }, { data: cities }, { data: types }] = await Promise.all([
-      apiFetch('/admin/articles'),
+      apiFetch(`/admin/articles?page=${page}`),
       apiFetch('/admin/cities'),
       apiFetch('/admin/business-types'),
     ]);
@@ -318,6 +344,10 @@ async function route() {
       else { msg.className = 'error'; msg.textContent = data.error; }
     });
 
+    document.querySelectorAll('.page-btn').forEach(a => {
+      a.addEventListener('click', e => { e.preventDefault(); location.hash = a.getAttribute('href').slice(1); route(); });
+    });
+
     document.querySelectorAll('.del-article-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (!confirm('Eliminar articulo?')) return;
@@ -329,8 +359,12 @@ async function route() {
   } else {
     // Default: dashboard
     renderNav('#dashboard');
-    const { data: users } = await apiFetch('/admin/users');
+    const { data: users } = await apiFetch(`/admin/users?page=${page}`);
     app.innerHTML = viewDashboard(users);
+
+    document.querySelectorAll('.page-btn').forEach(a => {
+      a.addEventListener('click', e => { e.preventDefault(); location.hash = a.getAttribute('href').slice(1); route(); });
+    });
 
     document.querySelectorAll('.approve-btn').forEach(btn => {
       btn.addEventListener('click', async () => {

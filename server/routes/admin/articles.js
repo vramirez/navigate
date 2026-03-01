@@ -6,13 +6,18 @@ const { requireAdmin } = require('../../middleware/auth');
 
 const router = express.Router();
 
-// GET /api/admin/articles
+// GET /api/admin/articles?page=1&limit=30
 router.get('/', requireAdmin, (req, res) => {
-  const articles = db.prepare(
-    'SELECT * FROM articles ORDER BY created_at DESC'
-  ).all();
+  const limit  = Math.min(parseInt(req.query.limit) || 30, 100);
+  const page   = Math.max(parseInt(req.query.page)  || 1, 1);
+  const offset = (page - 1) * limit;
 
-  // Attach city and business type tags
+  const total = db.prepare('SELECT COUNT(*) AS n FROM articles').get().n;
+
+  const articles = db.prepare(
+    'SELECT * FROM articles ORDER BY created_at DESC LIMIT ? OFFSET ?'
+  ).all(limit, offset);
+
   const getCities = db.prepare(
     `SELECT c.id, c.name FROM cities c
      JOIN article_cities ac ON ac.city_id = c.id
@@ -30,7 +35,7 @@ router.get('/', requireAdmin, (req, res) => {
     business_types: getTypes.all(a.id),
   }));
 
-  res.json(result);
+  res.json({ articles: result, total, page, limit, pages: Math.ceil(total / limit) });
 });
 
 // POST /api/admin/articles

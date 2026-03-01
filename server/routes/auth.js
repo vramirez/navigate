@@ -4,6 +4,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const { requireBusinessOwner } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -77,6 +78,47 @@ router.post('/login', (req, res) => {
   );
 
   res.json({ token, role: user.role });
+});
+
+// GET /api/profile
+router.get('/profile', requireBusinessOwner, (req, res) => {
+  const row = db.prepare(`
+    SELECT b.id, b.name, b.city_id, b.business_type_id,
+           c.name AS city_name, bt.name AS business_type_name
+    FROM businesses b
+    JOIN cities c ON c.id = b.city_id
+    JOIN business_types bt ON bt.id = b.business_type_id
+    WHERE b.user_id = ?
+  `).get(req.user.userId);
+  if (!row) return res.status(404).json({ error: 'Business profile not found' });
+  res.json(row);
+});
+
+// PATCH /api/profile
+router.patch('/profile', requireBusinessOwner, (req, res) => {
+  const { businessName, cityId, businessTypeId } = req.body;
+  if (!businessName && !cityId && !businessTypeId) {
+    return res.status(400).json({ error: 'Provide at least one field to update' });
+  }
+
+  if (cityId) {
+    const city = db.prepare('SELECT id FROM cities WHERE id = ?').get(cityId);
+    if (!city) return res.status(400).json({ error: 'Invalid cityId' });
+  }
+  if (businessTypeId) {
+    const btype = db.prepare('SELECT id FROM business_types WHERE id = ?').get(businessTypeId);
+    if (!btype) return res.status(400).json({ error: 'Invalid businessTypeId' });
+  }
+
+  const fields = [];
+  const params = [];
+  if (businessName) { fields.push('name = ?'); params.push(businessName); }
+  if (cityId)       { fields.push('city_id = ?'); params.push(cityId); }
+  if (businessTypeId) { fields.push('business_type_id = ?'); params.push(businessTypeId); }
+  params.push(req.user.userId);
+
+  db.prepare(`UPDATE businesses SET ${fields.join(', ')} WHERE user_id = ?`).run(...params);
+  res.json({ message: 'Profile updated' });
 });
 
 module.exports = router;

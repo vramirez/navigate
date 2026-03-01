@@ -89,14 +89,25 @@ button:hover { background: #2d2d5e; }
 .article .meta { font-size: 0.8rem; color: #999; }
 .article a { color: #1a1a2e; }
 
-.tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
-.tab-btn {
-  background: #eee;
-  color: #333;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  cursor: pointer;
-  width: auto;
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  color: #888;
 }
-.tab-btn.active { background: #1a1a2e; color: #fff; }
+
+.page-btn {
+  background: #1a1a2e;
+  color: #fff;
+  padding: 0.4rem 1rem;
+  border-radius: 5px;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.page-btn:hover { background: #2d2d5e; }
+
+nav a { color: #ccc; text-decoration: none; margin-left: 1rem; font-size: 0.9rem; }
+nav a:hover, nav a.active { color: #fff; }
