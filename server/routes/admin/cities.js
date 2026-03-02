@@ -23,9 +23,16 @@ router.post('/', requireAdmin, (req, res) => {
 
 // DELETE /api/admin/cities/:id
 router.delete('/:id', requireAdmin, (req, res) => {
-  const result = db.prepare('DELETE FROM cities WHERE id = ?').run(req.params.id);
-  if (result.changes === 0) return res.status(404).json({ error: 'City not found' });
-  res.json({ message: 'City deleted' });
+  try {
+    const result = db.prepare('DELETE FROM cities WHERE id = ?').run(req.params.id);
+    if (result.changes === 0) return res.status(404).json({ error: 'City not found' });
+    res.json({ message: 'City deleted' });
+  } catch (err) {
+    if (err.message.includes('FOREIGN KEY')) {
+      return res.status(409).json({ error: 'City is in use by businesses or articles and cannot be deleted' });
+    }
+    throw err;
+  }
 });
 
 module.exports = router;

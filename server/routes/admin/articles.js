@@ -43,6 +43,9 @@ router.post('/', requireAdmin, (req, res) => {
   const { url, title, description, event_date, language = 'es', cityIds, businessTypeIds } = req.body;
 
   if (!title) return res.status(400).json({ error: 'title required' });
+  if (url && /^\s*(javascript|data):/i.test(url)) {
+    return res.status(400).json({ error: 'Invalid URL' });
+  }
   if (!Array.isArray(cityIds) || cityIds.length === 0) {
     return res.status(400).json({ error: 'cityIds must be a non-empty array' });
   }

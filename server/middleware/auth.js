@@ -1,6 +1,7 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
+const db = require('../db');
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization;
@@ -29,6 +30,10 @@ function requireBusinessOwner(req, res, next) {
   requireAuth(req, res, () => {
     if (req.user.role !== 'business_owner') {
       return res.status(403).json({ error: 'Business owner access required' });
+    }
+    const user = db.prepare('SELECT status FROM users WHERE id = ?').get(req.user.userId);
+    if (!user || user.status !== 'active') {
+      return res.status(403).json({ error: 'Account is not active' });
     }
     next();
   });

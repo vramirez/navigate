@@ -75,6 +75,15 @@ db.exec(`
   );
 `);
 
+// ── Indexes ──────────────────────────────────────────────────────────────────
+// Columns used in the feed JOIN that aren't already covered by PRIMARY KEY / UNIQUE
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_businesses_city_id          ON businesses(city_id);
+  CREATE INDEX IF NOT EXISTS idx_businesses_business_type_id ON businesses(business_type_id);
+  CREATE INDEX IF NOT EXISTS idx_article_cities_city_id      ON article_cities(city_id);
+  CREATE INDEX IF NOT EXISTS idx_article_types_type_id       ON article_business_types(business_type_id);
+`);
+
 // ── Seed Data ────────────────────────────────────────────────────────────────
 
 function seedCities() {
