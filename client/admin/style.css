@@ -134,6 +134,22 @@ tr:last-child td { border-bottom: none; }
   margin-right: 0.2rem;
 }
 
+.tabs { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+.tab-btn {
+  background: #e8eaf6;
+  color: #3949ab;
+  border: none;
+  padding: 0.35rem 0.9rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: none;
+  display: inline-block;
+}
+.tab-btn:hover { background: #c5cae9; }
+.tab-btn.active { background: #16213e; color: #fff; }
+
 .pagination {
   display: flex;
   align-items: center;

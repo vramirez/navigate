@@ -2,6 +2,14 @@
 
 const API = '';  // same-origin
 
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function getToken() { return localStorage.getItem('nav_token'); }
 function setToken(t) { localStorage.setItem('nav_token', t); }
 function clearToken() { localStorage.removeItem('nav_token'); }
@@ -100,12 +108,12 @@ function viewFeed({ articles, page, pages }) {
   const list = articles.length
     ? articles.map(a => `
         <div class="article">
-          <h3>${a.title}</h3>
-          ${a.description ? `<p>${a.description}</p>` : ''}
+          <h3>${escHtml(a.title)}</h3>
+          ${a.description ? `<p>${escHtml(a.description)}</p>` : ''}
           <div class="meta">
-            ${a.event_date ? `Fecha: ${a.event_date} &nbsp;|&nbsp;` : ''}
+            ${a.event_date ? `Fecha: ${escHtml(a.event_date)} &nbsp;|&nbsp;` : ''}
             Idioma: ${a.language === 'es' ? 'Espanol' : 'Ingles'}
-            ${a.url ? `&nbsp;|&nbsp; <a href="${a.url}" target="_blank">Ver fuente</a>` : ''}
+            ${a.url ? `&nbsp;|&nbsp; <a href="${escHtml(a.url)}" target="_blank" rel="noopener">Ver fuente</a>` : ''}
           </div>
         </div>
       `).join('')
@@ -134,7 +142,7 @@ function viewProfile(profile, cities, types) {
       <h2 style="margin-bottom:1.5rem">Mi negocio</h2>
       <div class="form-group">
         <label>Nombre del negocio</label>
-        <input type="text" id="businessName" value="${profile.name}">
+        <input type="text" id="businessName" value="${escHtml(profile.name)}">
       </div>
       <div class="form-group">
         <label>Ciudad</label>
@@ -176,12 +184,19 @@ async function route() {
         const businessTypeId = +document.getElementById('businessTypeId').value;
         const msg = document.getElementById('msg');
 
+        if (password.length < 6) {
+          msg.className = 'error';
+          msg.textContent = 'La contrasena debe tener al menos 6 caracteres';
+          return;
+        }
         const { ok, data } = await apiFetch('/api/register', {
           method: 'POST',
           body: JSON.stringify({ email, password, businessName, cityId, businessTypeId }),
         });
         msg.className = ok ? 'success' : 'error';
-        msg.textContent = ok ? data.message : (data.error || 'Error al registrarse');
+        msg.innerHTML = ok
+          ? `${escHtml(data.message)} &mdash; <a href="#login">Iniciar sesion</a>`
+          : escHtml(data.error || 'Error al registrarse');
       });
     } else {
       app.innerHTML = viewLogin();

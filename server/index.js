@@ -1,8 +1,19 @@
 'use strict';
 
 require('dotenv').config();
+
+// Fail fast on missing required env vars
+const required = ['ADMIN_EMAIL', 'ADMIN_PASSWORD', 'JWT_SECRET'];
+const missing = required.filter(k => !process.env[k]);
+if (missing.length) {
+  console.error(`Missing required env vars: ${missing.join(', ')}`);
+  console.error('Copy .env.example to .env and fill in the values.');
+  process.exit(1);
+}
+
 const express = require('express');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 // Initialize DB (runs schema + seed on first start)
@@ -17,8 +28,19 @@ const adminArticles = require('./routes/admin/articles');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
+
+// Rate limit auth endpoints: 10 requests per minute per IP
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos. Espera un minuto.' },
+});
+app.use('/api/login', authLimiter);
+app.use('/api/register', authLimiter);
 
 // API routes
 app.use('/api', authRoutes);
@@ -27,6 +49,11 @@ app.use('/api/admin/users', adminUsers);
 app.use('/api/admin/cities', adminCities);
 app.use('/api/admin/business-types', adminBusinessTypes);
 app.use('/api/admin/articles', adminArticles);
+
+// 404 for unmatched API routes (must come before SPA fallback)
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
 
 // Serve client apps
 app.use('/admin', express.static(path.join(__dirname, '../client/admin')));

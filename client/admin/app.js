@@ -2,6 +2,14 @@
 
 const API = '/api';
 
+function escHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 function getToken() { return localStorage.getItem('nav_admin_token'); }
 function setToken(t) { localStorage.setItem('nav_admin_token', t); }
 function clearToken() { localStorage.removeItem('nav_admin_token'); }
@@ -62,14 +70,24 @@ function viewLogin() {
   `;
 }
 
-function viewDashboard({ users, page, pages }) {
+function viewDashboard({ users, page, pages }, statusFilter) {
   const pending = users.filter(u => u.status === 'pending');
+
+  const tabs = [
+    ['', 'Todos'],
+    ['pending', 'Pendientes'],
+    ['active', 'Aprobados'],
+    ['rejected', 'Rechazados'],
+  ].map(([val, label]) =>
+    `<a href="#dashboard?status=${val}" class="tab-btn ${statusFilter === val ? 'active' : ''}">${label}</a>`
+  ).join('');
+
   const rows = users.map(u => `
     <tr>
-      <td>${u.email}</td>
-      <td>${u.business_name || '-'}</td>
-      <td>${u.city || '-'}</td>
-      <td>${u.business_type || '-'}</td>
+      <td>${escHtml(u.email)}</td>
+      <td>${escHtml(u.business_name || '-')}</td>
+      <td>${escHtml(u.city || '-')}</td>
+      <td>${escHtml(u.business_type || '-')}</td>
       <td><span class="badge ${u.status}">${u.status}</span></td>
       <td>
         ${u.status === 'pending' ? `
@@ -82,14 +100,15 @@ function viewDashboard({ users, page, pages }) {
 
   const pagination = pages > 1 ? `
     <div class="pagination">
-      ${page > 1 ? `<a href="#dashboard?page=${page - 1}" class="page-btn">Anterior</a>` : ''}
+      ${page > 1 ? `<a href="#dashboard?status=${statusFilter}&page=${page - 1}" class="page-btn">Anterior</a>` : ''}
       <span>Pagina ${page} de ${pages}</span>
-      ${page < pages ? `<a href="#dashboard?page=${page + 1}" class="page-btn">Siguiente</a>` : ''}
+      ${page < pages ? `<a href="#dashboard?status=${statusFilter}&page=${page + 1}" class="page-btn">Siguiente</a>` : ''}
     </div>
   ` : '';
 
   return `
     <h2>Usuarios ${pending.length > 0 ? `<span class="badge pending">${pending.length} pendiente(s)</span>` : ''}</h2>
+    <div class="tabs" style="margin-bottom:1rem">${tabs}</div>
     <div class="card">
       <table>
         <thead><tr>
@@ -162,11 +181,11 @@ function viewArticles({ articles, page, pages }, cities, types) {
 
   const rows = articles.map(a => `
     <tr>
-      <td>${a.title}</td>
-      <td>${a.event_date || '-'}</td>
-      <td>${a.language}</td>
-      <td>${(a.cities || []).map(c => `<span class="tag">${c.name}</span>`).join('')}</td>
-      <td>${(a.business_types || []).map(t => `<span class="tag">${t.name}</span>`).join('')}</td>
+      <td>${escHtml(a.title)}</td>
+      <td>${escHtml(a.event_date || '-')}</td>
+      <td>${escHtml(a.language)}</td>
+      <td>${(a.cities || []).map(c => `<span class="tag">${escHtml(c.name)}</span>`).join('')}</td>
+      <td>${(a.business_types || []).map(t => `<span class="tag">${escHtml(t.name)}</span>`).join('')}</td>
       <td><button class="small danger del-article-btn" data-id="${a.id}">Eliminar</button></td>
     </tr>
   `).join('');
@@ -359,8 +378,15 @@ async function route() {
   } else {
     // Default: dashboard
     renderNav('#dashboard');
-    const { data: users } = await apiFetch(`/admin/users?page=${page}`);
-    app.innerHTML = viewDashboard(users);
+    const statusFilter = params.get('status') || '';
+    const statusQuery = statusFilter ? `&status=${statusFilter}` : '';
+    const { data: users } = await apiFetch(`/admin/users?page=${page}${statusQuery}`);
+    app.innerHTML = viewDashboard(users, statusFilter);
+
+    // Tab clicks re-route without page reload
+    document.querySelectorAll('.tab-btn').forEach(a => {
+      a.addEventListener('click', e => { e.preventDefault(); location.hash = a.getAttribute('href').slice(1); route(); });
+    });
 
     document.querySelectorAll('.page-btn').forEach(a => {
       a.addEventListener('click', e => { e.preventDefault(); location.hash = a.getAttribute('href').slice(1); route(); });

@@ -25,6 +25,9 @@ router.post('/register', (req, res) => {
   if (!email || !password || !businessName || !cityId || !businessTypeId) {
     return res.status(400).json({ error: 'All fields required: email, password, businessName, cityId, businessTypeId' });
   }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
 
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (existing) {
@@ -67,8 +70,11 @@ router.post('/login', (req, res) => {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
-  if (user.role === 'business_owner' && user.status !== 'active') {
-    return res.status(403).json({ error: 'Account pending approval or rejected' });
+  if (user.role === 'business_owner' && user.status === 'pending') {
+    return res.status(403).json({ error: 'Tu cuenta esta pendiente de aprobacion por el administrador.' });
+  }
+  if (user.role === 'business_owner' && user.status === 'rejected') {
+    return res.status(403).json({ error: 'Tu cuenta fue rechazada. Contacta al administrador.' });
   }
 
   const token = jwt.sign(
